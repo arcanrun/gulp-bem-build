@@ -24,7 +24,8 @@ var	browserSync = require('browser-sync').create(),
 	remember = require('gulp-remember'),
 	path = require('path'), 
 	multipipe = require('multipipe'),
-	notify = require('gulp-notify');
+	notify = require('gulp-notify'),
+	changed = require('gulp-changed'); 		  //deprecated
 
 
 var params = {
@@ -62,10 +63,10 @@ function sassTocss() {
 	}
 function images(){
 	console.log('\t=== images ===');
-	return gulp.src('app/common.blocks/**/*.+(jpg|jpeg|gif|svg|png)')
+	return gulp.src('app/common.blocks/**/*.{jpg,jpeg,gif,svg,png}')
+	.pipe(flatten())
 	.pipe(newer(params.imagesOut))
 	.pipe(imgmin())
-	.pipe(flatten())
 	.pipe(gulp.dest(params.imagesOut));
 
 }
@@ -88,9 +89,6 @@ gulp.task('server', function(){
 	gulp.watch('app/*.html', gulp.series('html'));
 
 });
-
-
-
 gulp.task('html', function(){
 	console.log('\t=== html ===');
 	 return gulp.src(params.htmlSrc)
@@ -98,23 +96,16 @@ gulp.task('html', function(){
 	.pipe(gulp.dest(params.out))
 	.pipe(reload({ stream: true }));
 });
-
-
-
-
 gulp.task('fonts', function(){
 	console.log('\t=== fonts ===');
 	return gulp.src(params.fonts + '/**/*')
 	.pipe(gulp.dest(params.fontsOut));
 });
-
-
 gulp.task('watch', function(){
 	
 		var watcher = chokidar.watch('app/common.blocks/', {
 		  ignored: /(^|[\/\\])\../,
 		  persistent: true
-
 		});
 	
 	// Something to use when events are received.
@@ -156,7 +147,6 @@ gulp.task('watch', function(){
 gulp.task('clean', function(){
 	return del(params.out);
 });
-
 gulp.task('build', gulp.series( gulp.parallel(
 				'html',
 				'sassTocss',
