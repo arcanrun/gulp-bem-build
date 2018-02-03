@@ -77,13 +77,23 @@ function images(){
 	.pipe(gulp.dest(params.imagesOut));
 
 }
-function detectFirstRunCall(run){
-  	if(run == 1){
+function detectFirstRunCall(run, opt){
+  	if(opt == 1) {
+	  	if(run == 1){
+	  		// ЗАПАРАЛЕЛИТЬ!!!!
+	  		sassTocss();
+	  		images();
+	  		
+	  	}	
+	  }else{
+	  	if(run == 1){
   		// ЗАПАРАЛЕЛИТЬ!!!!
   		sassTocss();
   		images();
   		js();
   	}
+	  }
+  	
   }
 function js(){
 	console.log('\t=== js ===');
@@ -189,38 +199,88 @@ gulp.task('fonts', function(){
 });
 gulp.task('watch', function(){
 	
-		var watcher = chokidar.watch('app/common.blocks/', {
-		  ignored: /(^|[\/\\])\../,
-		  persistent: true
-		});
-	
-	// Something to use when events are received.
-	var log = console.log.bind(console);
-	// Add event listeners.
+	var watcherSass = chokidar.watch('app/common.blocks/**/*.sass', {
+	  ignored: /(^|[\/\\])\../,
+	  persistent: true
+	});
 
-	watcher
+	var watcherJs = chokidar.watch('app/common.blocks/**/*.js', {
+	  ignored: /(^|[\/\\])\../,
+	  persistent: true
+	});
+
+	var watcherDir = chokidar.watch('app/common.blocks/', {
+	  ignored: /(^|[\/\\])\../,
+	  persistent: true
+	});
+
+	var log = console.log.bind(console);
+	
+	if( params.detectFirstRun == 0){}
+
+	watcherSass
 	  .on('add', function(path){
 	  	console.log('File', path, 'has been added');
-	  	detectFirstRunCall(params.detectFirstRun);
+	  	detectFirstRunCall(params.detectFirstRun, 1);
 	  })
 	  .on('change', function(path){
 	  	console.log('File', path, 'has been changed');
-	  	detectFirstRunCall(params.detectFirstRun);
+	  	detectFirstRunCall(params.detectFirstRun, 1);
 	  })
 	  .on('unlink', function(filepath){
 	  	console.log('File', filepath, 'has been removed');
 	  	remember.forget('sassTocss', path.resolve(filepath));
 	  	remember.forget('js', path.resolve(filepath));
-	  	detectFirstRunCall(params.detectFirstRun);
+	  	detectFirstRunCall(params.detectFirstRun, 1);
 	  	
 	  })
 	  .on('addDir', function(path){
 	  	console.log('Directory', path, 'has been added');
-	  	detectFirstRunCall(params.detectFirstRun);
+	  	detectFirstRunCall(params.detectFirstRun, 1);
 	  })
 	  .on('unlinkDir', function(path){
 	  	console.log('Directory', path, 'has been removed');
-	  	detectFirstRunCall(params.detectFirstRun);
+	  	detectFirstRunCall(params.detectFirstRun, 1);
+	  })
+	  .on('error', error => log(`Watcher error: ${error}`))
+	  
+
+
+
+	watcherJs
+	  .on('add', function(path){
+	  	console.log('File', path, 'has been added');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  })
+	  .on('change', function(path){
+	  	console.log('File', path, 'has been changed');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  })
+	  .on('unlink', function(filepath){
+	  	console.log('File', filepath, 'has been removed');
+	  	remember.forget('sassTocss', path.resolve(filepath));
+	  	remember.forget('js', path.resolve(filepath));
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  	
+	  })
+	  .on('addDir', function(path){
+	  	console.log('Directory', path, 'has been added');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  })
+	  .on('unlinkDir', function(path){
+	  	console.log('Directory', path, 'has been removed');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  })
+	  .on('error', error => log(`Watcher error: ${error}`))
+	 
+	  watcherDir
+	  .on('addDir', function(path){
+	  	console.log('Directory', path, 'has been added');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
+	  })
+	  .on('unlinkDir', function(path){
+	  	console.log('Directory', path, 'has been removed');
+	  	detectFirstRunCall(params.detectFirstRun, 2);
 	  })
 	  .on('error', error => log(`Watcher error: ${error}`))
 	  .on('ready', function(){
