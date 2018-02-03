@@ -25,7 +25,10 @@ var	browserSync = require('browser-sync').create(),
 	path = require('path'), 
 	multipipe = require('multipipe'),
 	notify = require('gulp-notify'),
-	changed = require('gulp-changed'); 		  //deprecated
+	changed = require('gulp-changed'),         //deprecated
+	uglify = require('gulp-uglify'),
+	append = require('gulp-append'),
+	insert = require('gulp-insert'); 		 
 
 
 var params = {
@@ -36,13 +39,16 @@ var params = {
 	fontsOut: 'app/public/fonts',
 	images: 'common.blocks',
 	imagesOut: 'app/public/img',
+	jsSrc: 'app/js',
+	jsOut: 'app/public/js',
 	detectFirstRun: 0 
 };
 
 gulp.task(sassTocss);
 gulp.task(images);
-
+gulp.task(js);
 function sassTocss() {
+		console.log('\t=== sassTocss ===');
 		return multipipe( gulp.src(['app/fonts-style/**/*.sass', 'app/common.blocks/**/*.sass'], {since: gulp.lastRun('sassTocss')}),
 		sourcemaps.init(),
 		remember('sassTocss'),
@@ -72,10 +78,58 @@ function images(){
 }
 function detectFirstRunCall(run){
   	if(run == 1){
+  		// ЗАПАРАЛЕЛИТЬ!!!!
   		sassTocss();
   		images();
+  		js();
   	}
   }
+function js(){
+	console.log('\t=== js ===');
+	return multipipe( 
+		gulp.src('app/common.blocks/**/*.js', {since: gulp.lastRun('js')}),
+		remember('js'),
+		concat('blocks.tmp.js'),
+		insert.prepend('$(document).ready(function(){'), //for jquery
+		insert.append('});'),							 //for jquery
+		uglify(),
+		debug({title: 'uglify'}),
+		gulp.dest(params.jsOut)
+
+		).on('error', notify.onError(function(err){
+			return {
+				title: 'js',
+				message: err.message
+			}
+		})).pipe(reload({ stream: true }));
+}
+
+gulp.task('js:delTmp',  function(){
+		   return del(params.jsOut + '/**/*.tmp.js')
+});
+
+gulp.task('js:allConcat', function(){
+	return multipipe( gulp.src(params.jsOut + '/**/*.js'),
+		   uglify(),
+		   concat('scripts.js'),
+		   gulp.dest(params.jsOut)
+		   ).on('error', notify.onError(function(err){
+			return {
+				title: 'js',
+				message: err.message
+			}
+		})).pipe(reload({ stream: true }));
+});
+gulp.task('js:prod', gulp.series('js:allConcat', 'js:delTmp'))
+
+gulp.task('js:libs', function(){
+	console.log('\t=== js:libs ===');
+	return gulp.src(params.jsSrc + '/**/*.js')
+			.pipe(concat('libs.tmp.js'))
+			.pipe(uglify())
+			.pipe(gulp.dest(params.jsOut))
+			.pipe(reload({ stream: true }));
+});
 
 gulp.task('server', function(){
 	
@@ -124,7 +178,7 @@ gulp.task('watch', function(){
 	  .on('unlink', function(filepath){
 	  	console.log('File', filepath, 'has been removed');
 	  	remember.forget('sassTocss', path.resolve(filepath));
-
+	  	remember.forget('js', path.resolve(filepath));
 	  	detectFirstRunCall(params.detectFirstRun);
 	  	
 	  })
@@ -151,7 +205,9 @@ gulp.task('build', gulp.series( gulp.parallel(
 				'html',
 				'sassTocss',
 				'fonts',
-				'images'
+				'images',
+				'js:libs',
+				'js'
 				)
 				
 			));
