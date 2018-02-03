@@ -27,7 +27,7 @@ var	browserSync = require('browser-sync').create(),
 	notify = require('gulp-notify'),
 	changed = require('gulp-changed'),         //deprecated
 	uglify = require('gulp-uglify'),
-	append = require('gulp-append'),
+	append = require('gulp-append'),		   //deprecated
 	insert = require('gulp-insert'); 		 
 
 
@@ -35,11 +35,13 @@ var params = {
 	out: 'app/public',
 	htmlSrc: 'app/index.html',
 	levels: [], // for BEM
-	fonts: 'app/fonts',
+	cssSrc: 'app/assets/css',
+	cssOut: 'app/public/style',
+	fonts: 'app/assets/fonts',
 	fontsOut: 'app/public/fonts',
 	images: 'common.blocks',
 	imagesOut: 'app/public/img',
-	jsSrc: 'app/js',
+	jsSrc: 'app/assets/js',
 	jsOut: 'app/public/js',
 	detectFirstRun: 0 
 };
@@ -49,16 +51,15 @@ gulp.task(images);
 gulp.task(js);
 function sassTocss() {
 		console.log('\t=== sassTocss ===');
-		return multipipe( gulp.src(['app/fonts-style/**/*.sass', 'app/common.blocks/**/*.sass'], {since: gulp.lastRun('sassTocss')}),
+		return multipipe( gulp.src(['app/assets/fonts-style/**/*.sass', 'app/common.blocks/**/*.sass'], {since: gulp.lastRun('sassTocss')}),
 		sourcemaps.init(),
 		remember('sassTocss'),
 		sass(),
-		cssmin(),
 		postcss([autopref()]),
-		concat('styles.css'),
+		concat('blocks.tmp.css'),
 		debug({title: 'concat:'}),
 		sourcemaps.write('.'),
-		gulp.dest(params.out)
+		gulp.dest(params.cssOut)
 		).on('error', notify.onError(function(err){
 			return {
 				title: 'sassTocss',
@@ -92,8 +93,6 @@ function js(){
 		concat('blocks.tmp.js'),
 		insert.prepend('$(document).ready(function(){'), //for jquery
 		insert.append('});'),							 //for jquery
-		uglify(),
-		debug({title: 'uglify'}),
 		gulp.dest(params.jsOut)
 
 		).on('error', notify.onError(function(err){
@@ -104,8 +103,25 @@ function js(){
 		})).pipe(reload({ stream: true }));
 }
 
+gulp.task('css:libs', function(){
+	return multipipe(
+			gulp.src(params.cssSrc + '/**/*.css'),
+			concat('libs.tmp.css'),
+			gulp.dest(params.cssOut)
+			).on('error', notify.onError(function(err){
+			return {
+				title: 'css:libs',
+				message: err.message
+			}
+		})).pipe(reload({ stream: true }));
+});
+
 gulp.task('js:delTmp',  function(){
-		   return del(params.jsOut + '/**/*.tmp.js')
+		return del(params.jsOut + '/**/*.tmp.js')
+});
+
+gulp.task('css:delTmp', function(){
+	 return del(params.cssOut + '/**/*.tmp.css')
 });
 
 gulp.task('js:allConcat', function(){
@@ -115,18 +131,34 @@ gulp.task('js:allConcat', function(){
 		   gulp.dest(params.jsOut)
 		   ).on('error', notify.onError(function(err){
 			return {
-				title: 'js',
+				title: 'js:allConcat',
 				message: err.message
 			}
 		})).pipe(reload({ stream: true }));
 });
-gulp.task('js:prod', gulp.series('js:allConcat', 'js:delTmp'))
+
+gulp.task('css:allConcat', function(){
+	return multipipe( gulp.src(params.cssOut + '/**/*.css'),
+		   cssmin(),
+		   concat('styles.css'),
+		   gulp.dest(params.cssOut)
+		   ).on('error', notify.onError(function(err){
+			return {
+				title: 'css',
+				message: err.message
+			}
+		})).pipe(reload({ stream: true }));
+});
+
+
+gulp.task('css:prod', gulp.series('css:allConcat', 'css:delTmp'));
+gulp.task('js:prod', gulp.series('js:allConcat', 'js:delTmp'));
+gulp.task('prod', gulp.parallel('css:prod', 'js:prod'));
 
 gulp.task('js:libs', function(){
 	console.log('\t=== js:libs ===');
 	return gulp.src(params.jsSrc + '/**/*.js')
 			.pipe(concat('libs.tmp.js'))
-			.pipe(uglify())
 			.pipe(gulp.dest(params.jsOut))
 			.pipe(reload({ stream: true }));
 });
@@ -203,6 +235,7 @@ gulp.task('clean', function(){
 });
 gulp.task('build', gulp.series( gulp.parallel(
 				'html',
+				'css:libs',
 				'sassTocss',
 				'fonts',
 				'images',
