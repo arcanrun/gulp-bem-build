@@ -56,8 +56,10 @@ function sassTocss() {
 		remember('sassTocss'),
 		sass(),
 		postcss([autopref()]),
+		cssmin(),
 		concat('blocks.tmp.css'),
 		debug({title: 'concat:'}),
+
 		sourcemaps.write('.'),
 		gulp.dest(params.cssOut)
 		).on('error', notify.onError(function(err){
@@ -135,7 +137,7 @@ gulp.task('css:delTmp', function(){
 });
 
 gulp.task('js:allConcat', function(){
-	return multipipe( gulp.src(params.jsOut + '/**/*.js'),
+	return multipipe( gulp.src([params.jsOut + '/**/libs.tmp.js', params.jsOut + '/**/blocks.tmp.js']),
 		   uglify(),
 		   concat('scripts.js'),
 		   gulp.dest(params.jsOut)
